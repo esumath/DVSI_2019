@@ -1,0 +1,210 @@
+---
+title: "Lab: R Plotting with ggplot2"
+author: "Xuemao Zhang"
+date: "June 25, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* All [ggplot2](https://ggplot2.tidyverse.org/reference/) plots begin with a call to `ggplot()`, supplying default data and aesthethic mappings, specified by `aes()`.  To save a plot to disk, use `ggsave()`.   For function references, please see https://ggplot2.tidyverse.org/reference/. 
+
+
+* In this session, we analyze the  `Salaries` data from the R library `car`.  We use `ggplot2` to plot some basic graphs.
+
+
+* The data are about 2008-09 nine-month academic salary for Assistant Professors, Associate Professors and Professors in a college in the U.S.  
+
+
+* It is a data frame with 397 observations on the following 6 variables.
+    * `rank`: a factor with levels `AssocProf`, `AsstProf`, and `Prof`
+    * `discipline`: a factor with levels A ("theoretical"" departments) or B ("applied"" departments).
+    * `yrs.since.phd`: years since PhD.
+    * `yrs.service`: years of service.
+    * `sex`: a factor with levels `Female` and `Male`
+    * `salary`: nine-month salary, in dollars.
+    
+* Install the following packages if you don't have them.
+
+```
+                install.packages('ggplot2');
+                install.packages('car');
+                install.packages('gridExtra');
+                install.packages('GGally');
+``` 
+
+## Data summary
+
+
+```{r, fig.align = "center", out.width = "100%", echo=T}
+library(ggplot2);
+library(car);
+str(Salaries);
+head(Salaries);
+tail(Salaries);
+```
+
+```{r echo=T}
+summary(Salaries);
+```
+## Quizk plots
+
+### Bar charts
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+library(gridExtra);
+bar1=qplot(data=Salaries,rank, fill=rank);
+bar2=qplot(data=Salaries,sex, fill=sex);
+grid.arrange(bar1, bar2, ncol=2);
+```
+
+### Histograms
+
+* The distribution of the salary variable.
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+library(gridExtra);
+p1 = qplot(data =Salaries, salary, fill = sex, bins = 15); 
+p2 = qplot(data =Salaries, salary, facets = .~sex, fill = sex, bins=15);
+grid.arrange(p1,p2, ncol=2);
+```
+
+
+## Ggplot() Graphics
+
+### Histogram with density scale
+
+* The distribution of the salary variable.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x = salary))+
+  geom_histogram(aes(y=..density..),color='grey', fill='yellow',bins=15)+ # Histogram with density instead of count on y-axis
+  geom_density(color='red', fill='blue',alpha=0.3); # Overlay with transparent density plot; alpha specifies the transparency level
+```
+
+
+* We may want to make multiple histograms or density curves by group
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x = salary, fill=rank) )+
+  geom_histogram(bins=15); 
+```
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x = salary, fill=rank) )+
+  geom_density(alpha=0.3); 
+```
+
+### Boxplots
+
+* We may compare the three subdata sets using box plots.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=rank, y = salary) )+
+  geom_boxplot(outlier.color = 'red');  #specify the color of the outliers
+```
+
+### Scatter plots
+
+* For example, we use a scatter plot to check the relationship between `salary` and `yrs.service`.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary) )+
+  geom_point();  
+```
+
+* We can assign the `sex` to a fill variable.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary, fill=sex) )+ #assign color variables
+  geom_point(pch=21);  
+```
+
+* Or we can assign the `rank` to a fill variable.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary, fill=rank) )+ #assign color variables
+  geom_point(pch=21);  
+```
+
+### Scatter plots with regression line
+
+* There is curvilinear relationship between `salary` and `yrs.service`.  We add a smooth regression curve to the scatter plot. 
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary) )+ 
+  geom_point(pch=21) +
+  geom_smooth();  
+```
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary,fill=sex) )+ 
+  geom_point(pch=21) +
+  geom_smooth();  
+```
+
+### Scatter plots with regression line: Facets
+
+* We may consider the relationship between `salary` and `yrs.service` for Female and male, respectively.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary, fill=sex) )+ 
+  geom_point(pch=21) +
+  geom_smooth()+
+  facet_grid(~sex); #facets by sex
+```
+
+*  We may consider facets by `rank`.
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggplot(data=Salaries,aes(x=yrs.service, y = salary, fill=rank) )+ 
+  geom_point(pch=21) +
+  geom_smooth()+
+  facet_grid(~rank); #facets by rank
+```
+
+
+## GGally R package 
+
+* [GGally](https://cran.r-project.org/web/packages/GGally/GGally.pdf) R package extends 'ggplot2' by adding several functions
+to reduce the complexity of combining geometric objects with transformed data.  For example,  pairwise plot matrix.
+
+* The package is maintained by [Barret Schloerke](http://ggobi.github.io/ggally/#ggally).
+
+* The function `ggpairs()` produces a matrix of scatter plots for visualizing the correlation between variables.  
+
+* The function `ggcorr()` is used to make a nice correlation matrix plot.
+
+
+### ggpairs(): ggplot2 matrix of plots
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+library(GGally);
+data1=subset(Salaries, select=c("yrs.since.phd", "yrs.service", "salary"));
+data2=subset(Salaries, select=c("yrs.since.phd", "yrs.service", "salary","sex"));
+ggpairs(data1);
+```
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+ggpairs(data2, aes(color=sex,alpha = 0.4));
+```
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+## Remove binwidth warning from ggplot2
+ggpairs(data2, aes(color=sex,alpha = 0.4), lower=list(combo = wrap("facethist", bins=15)) );
+```
+
+###  Correlation matrix with GGally
+
+```{r,echo = TRUE,out.width = '90%',fig.align = 'center'}
+library(GGally);
+ggcorr(data1);
+```

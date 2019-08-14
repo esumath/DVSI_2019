@@ -1,0 +1,2 @@
+These cheat sheets can be downloaded from 
+https://www.rstudio.com/resources/cheatsheets/

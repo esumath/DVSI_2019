@@ -1,0 +1,26 @@
+\frametitle{The \texttt {ggplot()} grammar: layers}
+
+\begin{itemize}
+\tightlist
+\item
+  geom\_density(): kernal density estimate
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# Use semi-transparent fill: alpha = 0.4}
+\NormalTok{P }\OperatorTok{+}\StringTok{ }\KeywordTok{geom_density}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{fill =} \KeywordTok{factor}\NormalTok{(cyl),}\DataTypeTok{alpha=}\FloatTok{0.4}\NormalTok{));}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\includegraphics[width=0.6\linewidth]{1_Rggplot2_files/figure-beamer/unnamed-chunk-25-1} \end{center}
+
+\begin{itemize}
+\tightlist
+\item
+  To customize the plot, these arguments can be used: alpha, color,
+  fill, linetype, size. Learn more here:
+  \href{https://ggplot2.tidyverse.org/reference/geom_density.html}{ggplot2
+  density plot}.
+\end{itemize}
+

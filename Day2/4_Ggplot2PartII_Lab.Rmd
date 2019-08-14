@@ -1,0 +1,211 @@
+---
+title: "Lab: R Plotting with ggplot2"
+author: "Xuemao Zhang"
+date: "June 25, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* All [ggplot2](https://ggplot2.tidyverse.org/reference/) plots begin with a call to `ggplot()`, supplying default data and aesthethic mappings, specified by `aes()`.  To save a plot to disk, use `ggsave()`.   For function references, please see https://ggplot2.tidyverse.org/reference/. 
+
+
+* Install the following packages if you don't have them.
+
+```
+                install.packages('ggplot2');
+                install.packages('gridExtra');
+``` 
+
+
+* In this session, we analyze the Housing prices data (https://github.com/IQSS/workshops/blob/master/R/Rgraphics/dataSets/landdata-states.csv) data from a Harvard University github: Institute for Quantitative Social Science (https://github.com/IQSS).  
+
+
+- The data can be read from the web directly:
+
+```{r fig.align="center", out.width = '80%', echo=TRUE}
+url="https://raw.githubusercontent.com/IQSS/workshops/master/R/Rgraphics/dataSets/landdata-states.csv";
+housing = read.csv(url, stringsAsFactors = FALSE);
+``` 
+
+
+- If you already downloaded the data, import from your local disk:
+
+```{r fig.align="center", out.width = '80%', echo=TRUE}
+housing = read.csv("F:/DataCamp/data/landdata-states.csv",header=TRUE, sep=",");
+dim(housing);
+str(housing);
+```
+
+
+## Some data manipulations
+
+- First, check if there are missing values
+
+```{r echo=T}
+which(complete.cases(housing) == F);
+housing_missing= subset(housing, complete.cases(housing) == F);
+head(housing_missing);
+tail(housing_missing);
+```
+
+- It can be seen that the region is missing for `DC` state
+
+```{r echo=T}
+unique(housing$region); #Unique values of the 'region' variable
+```
+
+- Let's put DC to the "South" region
+
+```{r echo=T}
+housing$region=as.character(housing$region); #Change the region  variable to character
+housing$region=ifelse(is.na(housing$region), 'South', housing$region);
+housing$region=as.factor(housing$region); #change it back to factor
+levels(housing$region);
+which(complete.cases(housing) == F);
+```
+
+```{r echo=T}
+summary(housing);
+```
+
+## Graphs
+
+
+### Histograms
+
+- Histogram of `Home.Value`
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(ggplot2)
+hist1=ggplot(housing, aes(x = Home.Value)) +
+  geom_histogram(bins=20)+
+  ggtitle("Histogram of Home Values")+
+  xlab("Home Value") + ylab("frequency");
+print(hist1);
+```
+
+- Histogram of `Home.Value` by `region`.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+hist2=ggplot(housing, aes(x = Home.Value)) +
+  geom_histogram(aes(fill = region),bins=20)+
+  ggtitle("Histogram of Home Values")+
+  xlab("Home Value") + ylab("frequency")+
+  theme(legend.position="top");
+print(hist2);
+
+hist3=ggplot(housing, aes(x = Home.Value)) +
+  geom_histogram(aes(fill = region),bins=20)+
+  ggtitle("Histogram of Home Values")+
+  xlab("Home Value") + ylab("frequency")+
+  facet_grid(~region)+
+  theme(legend.position="bottom");
+print(hist3);
+```
+
+### Scatter plots
+
+- Let's see the relationship between `Home.Value` and `Land.Value`
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing, aes(x=Land.Value, y=Home.Value, color=region)) +
+geom_point()+
+ggtitle("Scatter plot of Home.Value and Land.Value");
+```
+
+- Consider the sub data set for the year 2010.
+
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+housing2010=subset(housing, housing$Year==2010);
+ggplot(housing2010, aes(x=Land.Value, y=Home.Value, color=region)) +
+geom_point()+
+ggtitle("Scatter plot of Home.Value and Land.Value for the Year 2010");
+```
+
+
+- Consider the log transformation for both variables.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing2010, aes(x=log(Land.Value), y=log(Home.Value), color=region)) +
+geom_point()+
+ggtitle("Scatter plot of Home.Value and Land.Value for the Year 2010");
+```
+
+- Add another Aesthetic -  size by `Land.Price.Index`
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing2010, aes(x=log(Land.Value), y=log(Home.Value), color=region)) +
+geom_point(aes(size=Land.Price.Index))+
+ggtitle("Scatter plot of Home.Value and Land.Value for the Year 2010");
+```
+- Add a smoother - a (regression) curve indicating the patter between the two variables
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing2010, aes(x=log(Land.Value), y=log(Home.Value))) +
+geom_point(aes(color=region))+
+ggtitle("Scatter plot of Home.Value and Land.Value for the Year 2010")+
+geom_smooth();
+```
+
+### Time series plot
+
+- To see the trend of the house prices over the year, we consider average values of the variable `Home.Value` by `State` and `Year`
+
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+housing$Year=as.factor(housing$Year);
+housing_mean1=aggregate(Home.Value~ State+Year, data = housing, FUN= "mean");
+str(housing_mean1);
+housing_mean1$Year=as.integer(as.character(housing_mean1$Year));
+str(housing_mean1);
+```
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing_mean1, aes(x=Year, y=Home.Value))+
+  geom_point(aes(color=State));
+```
+
+
+- Or we can collapse the variable `Home.Value` by `region` and `Year`.
+
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+housing$Year=as.factor(housing$Year);
+housing_mean2=aggregate(Home.Value~ region+Year, data = housing, FUN= "mean");
+housing_mean2$Year=as.integer(as.character(housing_mean2$Year));
+str(housing_mean2);
+```
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing_mean2, aes(x=Year, y=Home.Value))+
+  geom_point(aes(color=region));
+```
+### Faceting
+
+- What is the trend in housing prices in each state?  
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing, aes(x = Date, y = Home.Value)) + 
+  geom_line(aes(color = State)); 
+```
+
+- There are two problems here-there are too many states to distinguish each one by color, and the lines obscure one another.  `ggplot2` offers two functions for creating small multiples:
+      - `facet_wrap()`: define subsets as the levels of a single grouping variable
+      - `facet_grid()`: define subsets as the crossing of two grouping variables
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(housing, aes(x = Date, y = Home.Value)) + 
+  geom_line()+
+  facet_wrap(~State, ncol = 7);
+```

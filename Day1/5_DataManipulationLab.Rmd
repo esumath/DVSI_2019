@@ -1,0 +1,265 @@
+---
+title: "Lab: Basic Data Manipulation in R"
+author: "Xuemao Zhang"
+date: "June 24, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+
+
+
+## Introduction
+
+* Data sets:  We use two hypothetical data sets students1.csv and students2.csv to show how to do basic data manipulations in R.
+
+* The file `students1.csv` contains 30 students' basic information, and two numerical variables: `Age` and `SAT`.
+
+
+* The file `students2.csv` contains two numerical variables: a course `grade` and `Height(in)` of 25 students from  `students1.csv` (5 of them are missing).
+
+* We want to study these four variables and the relationship among the variables.
+
+* Merging two datasets require that both have at least one variable in common (either string or numeric).
+
+* Explore each dataset separately before merging. Make sure to use all possible common variables.
+
+
+* In this session, we consider some basic data manipulation methods using R:
+
+     * Merging data
+     * Adding variables
+     * Checking missing values
+     * Replacing values
+     * Selecting variables
+     * Removing missing values
+     * Removing variables
+     * Renaming variables
+     * Subsetting observations
+     
+
+## Data structures
+
+* We have data in two separate datasets and we'd like to combine based on two variables: students' last name and first name. 
+
+```{r,echo = TRUE}
+students1=read.csv("F:/DataCamp/data/students1.csv",header=TRUE, sep=",");
+students2=read.csv("F:/DataCamp/data/students2.csv",header=TRUE, sep=",");
+dim(students1);
+str(students1);
+head(students1);
+dim(students2);
+str(students2);
+head(students2);
+```
+
+## Data merging
+
+* `merge()` function is used to combine the two data sets.
+
+* When common ids have different names, we use by.x and by.y to match them.  In this example, we use `by` to specify the common variables.
+
+* The option `all=TRUE` includes all data from both datasets.
+
+* The merged data set is a data frame.   The columns are the common columns followed by the remaining columns in the first data set and then those in the second data set.
+
+* If a common variable (`Gender` here) is not specified, the merged data keep both variables. Here they are `Gender.x` and `Gender.y`.
+
+
+```{r,echo = TRUE}
+students=merge(students1, students2, by=c("Last.Name","First.Name"), all=TRUE);
+str(students);
+dim(students);
+head(students);
+```
+
+
+
+## Add variables
+
+* We add an `ID` variable from 1 to `n`, the number of
+observations.
+
+
+```{r,echo = TRUE}
+students$ID = seq(dim(students)[1]);
+str(students);
+```
+
+## Check missing values 
+
+* It can be seen that some data values are missing.  Recall that 5 students are missing in the second data set students2.
+
+* The function `complete.cases()` returns a logical vector indicating which cases(rows) are complete.
+
+* The function `na.omit` is used to remove rows with missing values.
+
+```{r,echo = TRUE}
+rowSums(is.na(students)); # Number of missing per row
+colSums(is.na(students)); # Number of missing per column
+```
+
+```{r,echo = TRUE}
+students[!complete.cases(students),];# list rows of data that have missing values
+```
+
+* From this output we can see that 5 students have missing values for the three variables `Gender.y`, `Grade` and `Height`.
+
+
+## Replace a value
+
+* First, we replace the missing values of the variable `Gender.y` by the corresponding `Gender.x`.
+
+```{r,echo = TRUE}
+students$Gender.y=ifelse(is.na(students$Gender.y), as.character(students$Gender.x), as.character(students$Gender.y));  #use as.character() to avoid Gender.y converted from factor to numerical
+students[!complete.cases(students),];
+str(students);
+students$Gender.y=as.factor(students$Gender.y); # Convert Gender.y to factor
+str(students);
+students[!complete.cases(students),];  #check if there are missing values
+```
+
+* Second, suppose we surveyed the student `DOE03,	JOE03` and found his `Grade` is 80 and his `Height` is 72.
+
+
+```{r,echo = TRUE}
+dim(students);
+students[6,];   #Check the student's record
+#Replace the missing values:
+students[students$Last.Name=='DOE03' & students$First.Name=='JOE03',"Grade"] = 80;
+students[students$Last.Name=='DOE03' & students$First.Name=='JOE03',"Height"] = 72;
+## Or do the following
+#students[6,10]=80;  students[6,11]=72;
+head(students,n=6);    #Show the first 6 rows
+```
+
+## Select variables
+
+* Notice that the two variables `Age` and `SAT` do not have missing values.  If we want to study these two varialbes, we can obtain a subset containing the two variables without missing values. 
+
+
+```{r,echo = TRUE}
+keep=c("ID","Last.Name","First.Name","Gender.x","Age", "SAT"); #Keep these 6 variables only
+students_new0= subset(students, select=keep);
+str(students_new0);
+students_new0[!complete.cases(students_new0),];  #check if there are missing values
+```
+
+
+## Remove all missing values
+
+* Now, we study the relationship of the variables.  We need data without missing values. The following R code removes all missing values in the data.
+
+```{r,echo = TRUE}
+# list rows of data that have missing values
+students_new=students[complete.cases(students),];
+#The following are other way to remove all missing values
+#students_new=subset(students, complete.cases(students) == T);
+#students_new = na.omit(students);
+dim(students_new);
+str(students_new);
+students[!complete.cases(students_new),]; # list rows of data that have missing values
+```
+
+
+## Remove variables
+
+* `Gender.x` and `Gender.y` are equal.  So we delete the varialbe `Gender.y`.
+
+
+```{r,echo = TRUE}
+any(students_new$Gender.x!=students_new$Gender.y);  #Check if the two variables are equal
+students_new$Gender.y = NULL; #remove the variable Gender.y
+str(students_new);
+```
+
+## Rename variables
+
+* Let's rename `Gender.x` to `Gender`.
+
+```{r,echo = TRUE}
+names(students_new)[3] = "Gender";
+str(students_new);
+```
+
+## Subsetting observations
+```{r,echo = TRUE}
+students_new1=students_new[which(students_new$Gender=='Female' & students_new$SAT >= 1800), ]; #Select female students with SAT>=1800
+str(students_new1);   
+students_new1;  #The data set is small, so print the data
+```
+
+## Some data visualizations
+
+
+### Histograms and density plots
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+attach(students_new);
+par(mfrow=c(2,2));
+hist(Age, freq=F, main='Histogram of Age');
+lines(density(Age), col=2, lty=1, lwd=2); 
+hist(SAT,freq=F, main='Histogram of SAT');
+lines(density(SAT), col=2, lty=1, lwd=2); 
+hist(Grade,freq=F, main='Histogram of Grade');
+lines(density(Grade), col=2, lty=1, lwd=2); 
+hist(Height,freq=F, main='Histogram of Height');
+lines(density(Height), col=2, lty=1, lwd=2); 
+```
+
+### Box plots
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+par(mfrow=c(2,2));
+boxplot(Age, main='Boxplot of Age');
+boxplot(SAT, main='Boxplot of SAT'); 
+boxplot(Grade, main='Boxplot of Grade');
+boxplot(Height, main='Boxplot of Height');
+#There are no outliers
+```
+
+
+###Box plots by Gender
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+par(mfrow=c(2,2));
+boxplot(Age~Gender, main='Boxplot of Age',col=c(2,3));
+boxplot(SAT~Gender, main='Boxplot of SAT',col=c(2,3)); 
+boxplot(Grade~Gender, main='Boxplot of Grade',col=c(2,3));
+boxplot(Height~Gender, main='Boxplot of Height',col=c(2,3));
+#There are no outliers
+```
+### Scatter plot matrix
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+pairs(~Age+SAT+Grade+Height,col = c(2,3)[Gender],pch=20, data=students_new,lower.panel = NULL);
+```
+
+
+### Categorical data visualizations
+
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+counts= table(Gender); 
+counts;
+barplot(counts,main="Distribution of Gender", 
+col=c(2,3),names.arg=c("Female", "Male"));
+```
+
+* Add another binary varialbe `SAT1800`: 1 if SAT >= 1800; 0 otherwise 
+
+```{r,echo = TRUE}
+students_new$SAT1800=ifelse(SAT >= 1800, 1,0);
+table=table(students_new$Gender, students_new$SAT1800);  #Construct a Crosstable
+table;
+detach(students_new);
+```
+

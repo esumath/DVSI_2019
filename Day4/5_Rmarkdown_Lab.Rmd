@@ -1,0 +1,366 @@
+---
+title: "Introduction to R Markdown"
+author: "Xuemao Zhang"
+date: "June 27, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+# install these packages if you don't have them
+# install.packages('ggplot2')
+# install.packages('dplyr')
+# install.packages('tidyr')
+#library(tidyr) ## for data wrangling functions
+library(ggplot2); ## for plotting
+library(dplyr); ## for data wrangling functions
+library(knitr); ## for tables.
+
+```
+
+## Introduction
+
+* This is an R Markdown document. By studying the document source code file, compiling it, and observing the result, side-by-side with the source, you'll learn a lot about the R Markdown and LaTeX mathematical typesetting language, and you'll be able to produce nice-looking documents with R input and output neatly formatted. 
+
+* We assume you have already installed R (https://www.r-project.org) (R Core Team 2018) and the RStudio IDE (https://www.rstudio.com). RStudio makes it easier for an average user to work with R Markdown.  To  install the rmarkdown package in R:
+
+```
+install.packages('rmarkdown')
+
+```
+
+   
+* R Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see http://rmarkdown.rstudio.com.  You can use a single R Markdown file  to generate high quality reports that can be shared with an audience.
+
+* R Markdown was designed for easier reproducibility, since both the computing code and narratives are in the same document, and results are automatically generated from the source code.
+
+
+* If you want to generate PDF output, you will need to install LaTeX. For R Markdown users who have not installed LaTeX before,  install TinyTeX (https://yihui.name/tinytex/) is recommended.  TinyTeX is a lightweight, portable, cross-platform, and easy-to-maintain LaTeX distribution. The R companion package tinytex can help you automatically install missing LaTeX packages when compiling LaTeX or R Markdown documents to PDF.
+
+```
+install.packages('tinytex')
+tinytex::install_tinytex()
+```
+
+* Below is a minimal R Markdown document, which should be a plain-text file, with the conventional extension .Rmd:
+
+```
+---
+title: "Hello R Markdown"
+author: "Awesome Me"
+date: "2018-02-14"
+output: html_document
+---
+```
+
+You can add a table of contents (TOC) using the `toc` option and specify the depth of headers that it applies to using the `toc_depth` option.  You can specify the `toc_float` option to float the table of contents to the left of the main document content. The floating table of contents will always be visible even when the document is scrolled. 
+ 
+* When you click the **Knit** button in RStudio, a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+library(datasets);
+str(mtcars);
+```
+
+
+A code chunk starts with three backticks like ` ```{r} ` where r indicates the language name, and ends with three backticks. You can write chunk options in the curly braces (e.g., set the figure height to 5 inches: ` ```{r, fig.height=5}) `.
+
+You can also embed plots, for example:
+
+```{r,echo = FALSE}
+mtcars$cyl=as.factor(mtcars$cyl);
+fit = lm(mpg~wt, data=mtcars);
+b=coef(fit);
+
+ggplot(data = mtcars, mapping = aes(x = wt, y = mpg)) + geom_point(aes(colour= cyl))+geom_smooth(method='lm', se = FALSE);
+```
+```
+The slope of the regression is `r b[2]`.
+```
+
+The code uses the `color` aesthetic to assign a color to each point based on the number of cylinders of the car. 
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Key Formatting Constructs
+
+The key formatting constructs are discussed at http://rmarkdown.rstudio.com/authoring_basics.html. You can see above how I constructed main section headings. Now I'm going to create a series of sections using secondary headings.
+
+### Emphasis
+
+This is *italic*. This is **bold**.
+
+
+### Superscripts
+
+This is y^2^.
+
+### Lists
+
+Unordered list items start with *, -. or +, and you can nest one list within another list by indenting the sub0list.  For example,
+
+* Item 1
+* Item 2
+    + Item 2a
+    + Item 2b
+
+
+Numbered list items start with numbers and you can also nest lists within lists.  For example,
+
+1. Item 1
+2. Item 2
+3. Item 3
+    + Item 3a
+    + Item 3b
+
+
+### Block Quotes
+
+Block Quotes are written after >.  For example,
+
+>"There are three kinds of lies: lies, damned lies, and statistics."
+>
+> --- Mark Twain
+
+
+### Displaying Blocks of Code Without Evaluating
+
+In some situations, you want to display R code but not evaluate it.  Plain code blocks can be written after three or more backticks, and you can also indent the blocks by four spaces.   For example,
+
+```
+The null hypothesis is usually an hypothesis of "no difference" e.g. no difference between blood pressures in group A and group B. Define a null hypothesis for each study question clearly before the start of your study.
+
+```
+
+In general, you'd better leave at least one empty line between adjacent but different elements, e.g., a header and a paragraph.  This is to avoid ambiguity to the Markdown render.  For example, does "#" indicate a header below?
+
+In R, the character
+# indicates a comment.
+
+
+### Displaying R Code Inline in a Sentence
+
+Sometimes, you need to include an R name or command inline in a sentence. You need to use a pair of backticks. Here is how your format it.
+
+The `sqrt` function computes the square root of a number.
+
+
+### Evaluating and Inserting R Code in a Sentence
+
+Sometimes, you want a result without showing the user that you used R to get it.  An inline R code expression starts with ` `r ` and ends with a backtick ` ` `.  Here is an example.  
+
+The mean of the numbers 2,3,4 is `r mean(c(2,3,4))`.
+
+
+
+
+
+There are lots of ways you can exploit this capability. You can do more advanced calculations in a hidden code block by setting "echo=FALSE", assign the results to variables, and then simply use the variable names to insert the results in a sentence.
+
+In the following example, I compute the sum of the integers from 2 to 18 in a hidden code block. Then I display the result inline.
+
+```{r,echo=FALSE}
+x <- 2:18
+answer <- sum(x)
+```
+
+
+The sum of the integers from 2 to 18 is `r answer`.
+
+
+## Typesetting Equations
+
+Latex equations can be written in a Markdown file as well. 
+
+### Inline vs. Display Material
+
+Equations can be formatted *inline* or as *displayed formulas*.  In the latter case, they are centered and set off from the main text.  In the former case, the mathematical material occurs smoothly in the line of text.
+
+In order to fit neatly in a line, summation expressions (and similar constructs) are formatted slightly differently in their inline and display versions.  
+
+Inline mathematical material is set off by the use of single dollar-sign characters. Consequently, if you wish to use a dollar sign (for example, to indicate currency), you need to preface it with a back-slash.  The following examples, followed by their typeset versions, should make this clear
+
+``` 
+This summation expression $\sum_{i=1}^n X_i$ appears inline.
+```
+
+This summation expression $\sum_{i=1}^n X_i$ appears inline.
+
+```
+This summation expression is in display form.
+
+$$\sum_{i=1}^n X_i$$
+```
+This summation expression is in display form.
+
+$$\sum_{i=1}^n X_i$$
+The following is a 2 by 2 matrix.
+
+$$X=\begin{bmatrix} a & b\\
+c&d
+\end{bmatrix}$$
+
+
+## Some LaTeX Basics
+
+In this section, we show you some rudiments of the LaTeX typesetting language.
+
+### Subscripts and Superscripts
+To indicate a subscript, use the underscore `_` character. To indicate a superscript, use a single caret character `^`.  Note: this can be confusing, because the R Markdown language delimits superscripts with two carets. In LaTeX equations, a single caret indicates the superscript. 
+
+If the subscript or superscript has just one character, there is no need to delimit with braces. However, if there is more than one character, braces must be used.  
+
+The following examples illustrate:
+
+```
+$$X_i$$
+$$X_{i}$$
+```
+$$X_i$$
+$$X_{i}$$
+
+Notice that in the above case, braces were not actually needed.
+
+In this next example, however, failure to use braces creates an error, as LaTeX sets only the first character as a subscript
+
+```
+$$X_{i,j}$$
+$$X_i,j$$
+```
+
+$$X_{i,j}$$
+$$X_i,j$$
+
+Here is an expression that uses both subscripts and superscripts
+
+```
+$$X^2_{i,j}$$
+```
+
+$$X^2_{i,j}$$
+
+### Square Roots
+
+We indicate a square root using the `\sqrt` operator.
+
+```
+$$\sqrt{b^2 - 4ac}$$
+```
+
+$$\sqrt{b^2 - 4ac}$$
+
+### Fractions
+
+Displayed fractions are typeset using the `\frac` operator.
+
+```
+$$\frac{4z^3}{16}$$
+```
+$$\frac{4z^3}{16}$$
+
+### Summation Expressions
+
+These are indicated with the `\sum' operator, followed by a subscript for the material appearing below the summation sign, and a superscript for any material appearing above the summation sign.
+
+Here is an example.
+
+```
+$$\sum_{i=1}^{n} X^3_i$$
+```
+$$\sum_{i=1}^{n} X^3_i$$
+
+
+### Self-Sizing Parentheses
+
+In LaTeX, you can create parentheses, brackets, and braces which size themselves automatically to contain large expressions. You do this using the `\left` and `\right` operators.  Here is an example
+
+```
+$$\sum_{i=1}^{n}\left( \frac{X_i}{Y_i} \right)$$
+```
+
+$$\sum_{i=1}^{n}\left( \frac{X_i}{Y_i} \right)$$
+
+### Greek Letters
+
+Many statistical expressions use Greek letters. Much of the Greek alphabet is implemented in LaTeX, as indicated in the LaTeX cheat sheet available at the course website.  There are both upper and lower case versions available for some letters.
+
+```
+$$\alpha, \beta,  \gamma, \Gamma$$
+```
+
+$$\alpha, \beta,  \gamma, \Gamma$$
+
+### Special Symbols
+
+All common mathematical symbols are implemented, and you can find a listing on the LaTeX cheat sheet.
+
+Some examples. (Notice that, in the third example, I use the tilde character for a forced space. Generally LaTeX does spacing for you automatically, and unless you use the tilde character, R will ignore your attempts to add spaces.)
+
+```
+$$a \pm b$$
+$$x \ge 15$$
+$$a_i \ge 0~~~\forall i$$
+```
+
+$$a \pm b$$
+$$x \ge 15$$
+$$a_i \ge 0~~~\forall i$$
+
+### Special Functions
+
+LaTeX typesets special functions in a different font from mathematical variables. These functions, such as $\sin$, $\cos$, etc. are indicated in LaTeX with a backslash. Here is an example that also illustrates how to typeset an integral.
+
+```
+$$\int_0^{2\pi} \sin x~dx$$
+```
+$$\int_0^{2\pi} \sin x~dx$$
+
+### Matrices
+
+Matrics are presented in the `array` environment. One begins with the statement
+`\begin{array}` and ends with the statement `\end{array}`. Following the opening statement, a format code is used to indicate the formatting of each column. In the example below, we use the code `{rrr}` to indicate that each column is right justified. Each row is then entered, with cells separated by the `&` symbol, and each line (except the last) terminated by `\\`.
+
+```
+$$\begin{array}
+{rrr}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{array}
+$$
+```
+$$\begin{array}
+{rrr}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{array}
+$$
+
+In math textbooks, matrices are often surrounded by brackets, and are assigned to a boldface letter.  Here is an example
+
+```
+$$\mathbf{X} = \left[\begin{array}
+{rrr}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{array}\right]
+$$
+```
+
+$$\mathbf{X} = \left[\begin{array}
+{rrr}
+1 & 2 & 3 \\
+4 & 5 & 6 \\
+7 & 8 & 9
+\end{array}\right]
+$$
+
+
+

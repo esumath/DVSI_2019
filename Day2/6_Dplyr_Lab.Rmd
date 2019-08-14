@@ -1,0 +1,241 @@
+---
+title: "Lab: Data Manipulation Using Dplyr"
+author: "Xuemao Zhang"
+date: "June 25, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* We cosider data manipulations using the package `dplyr` in this session
+
+* Install the following packages if you don't have them.
+
+```
+                install.packages('dplyr');
+                install.packages('ggplot2');
+                install.packages('gridExtra');
+                install.packages('RColorBrewer');
+                                
+``` 
+
+* Weather forecast Accuracy Data: The data are measurements of forecasted and observed MinTemp (minimum temperature) and MaxTemp (maximum temperature) over one month period in 113 cities in US.  There are three files.
+
+
+* Locations file `locations.csv`:  The 113 cities were fairly spread out and the observed weather data were measured in 113 airports.   The `latitude` and `longitude` were used to get the airport code (AirPtCd).
+
+```{r echo=T}
+locations=read.csv("F:/DataCamp/data/locations.csv",header=TRUE, sep=",");
+str(locations);
+head(locations);
+```
+
+* Weather forecast file `forecast201708.csv`:  
+    - `ID` is used to identify airports; there is a correspondenc between `ID` and `AirPtCd`.  
+    - `Date` is the date when weather data were measured and 
+    - `ForecastDate` is the date that the forecast was made on.  
+    - `Value_forecast` is the forecasted value.  
+    - `Variable_forecast` indicates what value is being forecast (MinTemp or MaxTemp)
+
+```{r echo=T}
+forecastWeather=read.csv("F:/DataCamp/data/forecast201708.csv",header=TRUE, sep=",");
+str(forecastWeather);
+head(forecastWeather);
+```
+
+* Historic measures of weather `histWeather201708.csv`:  
+    - `Date` is the date when weather data were measured which is variable in the file `forecast201708.csv`.
+    - `Max_TemperatureF` is the measured MaxTemp.  
+    - `Mean_TemperatureF` is the measured average Temp.  
+    - `Min_TemperatureF` is the measured MinTemp. 
+    - `AirPtCd` is airport code and each airport is also identified by `ID`. 
+
+
+```{r echo=T}
+library(dplyr);
+histWeather=read.csv("F:/DataCamp/data/histWeather201708.csv",header=TRUE, sep=","); #31 days weather data for 113 airports
+dim(histWeather);
+str(histWeather);
+head(histWeather);
+```
+
+
+
+## Data Tidying
+
+- There are three interrelated rules which make a dataset tidy:
+    - Each variable must have its own column.
+    - Each observation must have its own row.
+    - Each value must have its own cell.
+
+- The `forecastWeather` is not tidy.
+
+```{r echo=TRUE}
+#add two variables: MinTemp_forecast,  MaxTemp_forecast
+library(dplyr);
+forecastWeather= mutate(forecastWeather, MinTemp_forecast=ifelse(Variable_forecast=='MinTemp', Value_forecast, NA));
+forecastWeather= mutate(forecastWeather, MaxTemp_forecast=ifelse(Variable_forecast=='MaxTemp', Value_forecast, NA));
+#then remove the two variables: Value_forecast, Variable_forecast
+forecastWeather$Value_forecast=NULL;
+forecastWeather$Variable_forecast=NULL;
+str(forecastWeather);
+```
+### Create two subdata sets for forecasted MinTemp and MaxTemp.
+
+```{r echo=TRUE}
+forecast_MinTemp=select(forecastWeather, -c(MaxTemp_forecast));
+forecast_MinTemp=filter(forecast_MinTemp, complete.cases(MinTemp_forecast) == T); #removing missing values
+str(forecast_MinTemp);
+head(forecast_MinTemp);
+#remove the NAs
+forecast_MaxTemp=select(forecastWeather, -c(MinTemp_forecast));
+forecast_MaxTemp=filter(forecast_MaxTemp, complete.cases(MaxTemp_forecast) == T);
+str(forecast_MaxTemp);
+head(forecast_MaxTemp);
+#removing the NAs
+```
+
+### Merge the two data sets by the three variables: ID, Date, ForecastDate. 
+
+
+```{r echo=TRUE}
+#It can be seen that more MaxTemp were forecasted
+dim(forecast_MinTemp); 
+dim(forecast_MaxTemp); 
+forecast_Temp=full_join(forecast_MaxTemp,forecast_MinTemp, by=c("ID","Date","ForecastDate"));
+dim(forecast_Temp); #[1] 26164     5
+#Let's consider days which both MaxTemp and MinTemp were forecasted
+forecast_Temp= filter(forecast_Temp, complete.cases(MaxTemp_forecast) == T&complete.cases(MinTemp_forecast) == T); #If we used inner_join, we do not need this line
+dim(forecast_Temp); #[1] 22780     5
+```
+
+## Merge forecaste data and historic data
+
+
+```{r echo=TRUE}
+histWeather=filter(histWeather, complete.cases(histWeather)==T); #remove missing values
+dim(histWeather);  
+str(forecast_Temp);
+str(histWeather);
+```
+
+- Merge forecaste data and historic data by `ID` and `Date`
+
+```{r echo=TRUE}
+DataWeather=left_join(forecast_Temp,histWeather, by=c("ID","Date"));
+#full_join(forecast_Temp,histWeather, by=c("ID","Date"));
+dim(DataWeather);
+str(DataWeather);
+head(DataWeather);
+```
+
+## Add forecast error variables
+
+
+### Formate the dates
+
+```{r echo=TRUE}
+DataWeather$Date=as.Date(DataWeather$Date, "%m/%d/%Y");
+DataWeather$ForecastDate=as.Date(DataWeather$ForecastDate, "%m/%d/%Y");
+```
+
+### Add a variable `Type`
+
+- `Type` is the difference between `Date` when actual weather data were measured and `ForecastDate`. 0 means same-day weatherforecast, 1 means one-day weatherforecast,...  
+
+```{r echo=TRUE}
+DataWeather=mutate(DataWeather, Type=difftime(Date, ForecastDate, units = c("days")) ); #difftime() calcualtes time difference
+DataWeather$Type=as.integer(DataWeather$Type);
+head(DataWeather);
+```
+
+### Add forecast error variables
+
+- Define forecast error as  Observed value-Forecast value
+      - `Le` is used to denote MaxTemp forecast errors
+      - `Se` is used to denote MinTemp forecast errors
+
+```{r echo=TRUE}
+DataWeather=mutate(DataWeather, Le=Max_TemperatureF-MaxTemp_forecast);
+DataWeather=mutate(DataWeather, Se=Min_TemperatureF-MinTemp_forecast);
+str(DataWeather);
+```
+- Then remove all missing values
+
+```{r echo=TRUE}
+DataWeather=filter(DataWeather, complete.cases(DataWeather) == T);
+```
+
+
+
+## Some data visualizations
+
+### Check if there are outliers
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(gridExtra); library(ggplot2); library(RColorBrewer);
+summary(DataWeather$Le);
+summary(DataWeather$Se);
+b1=ggplot(DataWeather,aes(x=factor(Type), y=Se,fill=factor(Type))) + geom_boxplot();
+b2=ggplot(DataWeather,aes(x=factor(Type), y=Se,fill=factor(Type))) + geom_boxplot();
+grid.arrange(b1, b2, ncol=2);
+```
+
+
+### Compare the short & long term weather forecast accuracy
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(DataWeather, aes(x = Le)) +
+geom_histogram(aes(y=..density..),bins = 20) +
+geom_density(color='red', fill='blue',alpha=0.3)+ 
+facet_grid(~Type);
+
+ggplot(DataWeather, aes(x = Se)) +
+geom_histogram(aes(y=..density..),bins = 20) +
+geom_density(color='red', fill='blue',alpha=0.3)+ 
+facet_grid(~Type);
+```
+### Relationship between two forecast errors
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+ggplot(data=DataWeather,aes(x = Se, y=Le, color=factor(Type)) )+
+  geom_point()+
+  geom_smooth()+
+  facet_wrap(~Type);
+```
+
+###  Any States have smaller/larger forecast errors?
+
+- The following graph is messy
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+ggplot(DataWeather, aes(x = Type, y = Le)) + 
+  geom_line(aes(color = AirPtCd )); 
+```
+
+- We now aggregate the data by State
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+Data=left_join(DataWeather,locations, by=c("AirPtCd") );
+str(Data);
+##aggregate the data by Tpye and State; use the mean of the absolute forecast errors
+Data=Data%>% group_by(Type, state)%>% summarise(mean1=mean(abs(Le)), mean2=mean(abs(Se)));
+ggplot(Data, aes(x = Type, y = mean1)) + 
+  geom_line(aes(color = state )); 
+```
+
+```{r,echo = TRUE,out.width = '100%',fig.align = 'center'}
+ggplot(Data, aes(x = Type, y = mean1,color=state))  + 
+  geom_line()+
+  facet_wrap(~state, ncol = 7);
+```
+

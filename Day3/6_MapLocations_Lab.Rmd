@@ -1,0 +1,210 @@
+---
+title: "Lab: Mapping Locations"
+author: "Xuemao Zhang"
+date: "June 26, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* In this session, we use one example to show how to map locations.
+
+* Install the following packages if you don't have them.
+
+```
+                install.packages("devtools");
+                devtools::install_github("wmurphyrd/fiftystater");
+                install.packages("dplyr");
+                install.packages("stringr");
+                install.packages('maps');
+                install.packages('ggmap');
+                install.packages('ggplot2');
+                install.packages('magick');
+``` 
+
+* Consider the unemployment rates data for the 50 largest cities in US from 2013 to 2017.  The data are available from [Bureau of Labor Statistics](https://www.bls.gov/lau/).
+
+
+## Unemployment Rates City Data
+
+### Some data manipulations
+
+- The data are in the form of HTML tables on https://www.bls.gov/lau/:
+
+      - https://www.bls.gov/lau/lacilg13.htm
+      - https://www.bls.gov/lau/lacilg14.htm
+      - https://www.bls.gov/lau/lacilg15.htm
+      - https://www.bls.gov/lau/lacilg16.htm
+      - https://www.bls.gov/lau/lacilg17.htm
+
+- The data were downloaded and combined in the file `UnemploymentCity.csv`.
+
+```{r echo=TRUE}
+City0 = read.csv("F:/DataCamp/data/UnemploymentCity.csv",header=TRUE, sep=",");
+dim(City0);
+str(City0);
+City0$city=as.character(City0$city);
+str(City0);
+unique(City0$city);
+```
+- To plot the cities on the map, we need to knowhe the
+coordinates.  The `us.cities` database can be used.
+
+
+
+```{r echo=TRUE}
+library(maps); 
+data(us.cities);
+str(us.cities);
+```
+
+- First, add a variable "state".
+
+```{r echo=TRUE}
+library(stringr); library(dplyr);
+City0=mutate(City0, state=stringr::str_sub(city, -2, -1));  #extract the state name: the last two characters from the city name
+head(City0);
+```
+
+
+- We need to manipulate the data `City` a little bit.   To use the lat  and  long information, we ddd the "name" variable in 'us.cities' in the form of city name + state abbreviatioin separated by a space.
+
+- Some 'city' values contain "(consolidated) city, ", "County/city, " or  "city, ".
+
+```{r echo=TRUE}
+library(dplyr);
+City1=mutate(City0, name0=gsub(pattern="(consolidated) city, ", replacement='', city,fixed=TRUE));
+City2=mutate(City1, name1=gsub(pattern="County/city, ", replacement='', name0,fixed=TRUE));
+City=mutate(City2, name=gsub(pattern="city, ", replacement='', name1,fixed=TRUE));
+unique(City$name);
+```
+
+
+
+### Get city lat and  long information
+
+- Combine the two data frames City and  us.cities to get lat and  long information.
+
+```{r echo=TRUE}
+CityRate=dplyr::left_join(City, us.cities, by="name");
+which(complete.cases(CityRate)==F);  ##Three city names do not match
+CityRate$name[13]; CityRate$name[31];  CityRate$name[35];
+```
+           
+- Change the names of these three cities to match us.cities$name.
+
+```{r echo=TRUE}
+City$name=ifelse(City$name=="Nashville-Davidson TN", "Nashville TN", ifelse(City$name=="Louisville-Jefferson County KY", "Louisville KY", ifelse(City$name=="Washington DC","WASHINGTON DC", City$name)));
+```
+
+
+- Try to combine the two data frames City and  us.cities again.
+
+```{r echo=TRUE}
+CityRate=dplyr::left_join(City, us.cities, by="name");
+which(complete.cases(CityRate)==F);  
+head(CityRate);
+```
+
+### Get city lat and  long information using `ggmap`
+
+- An easier way to get lat and  long information of a location is to use the package  [ggmap](https://github.com/dkahle/ggmap).
+
+- As of mid-2018, the Google Maps Platform requires a registered API key. 
+
+- In R, ggmap functions that use Google's services no longer function out of the box, since the user has to setup an account with Google, enable the relevant APIs, and then tell R about the user's setup.
+
+- To obtain an API key and enable services, go to https://cloud.google.com/maps-platform/. 
+
+
+
+```
+library(ggmap);
+geo=geocode(location = City0$city, output="latlon", source="dsk"); #source="google"
+# datasciencetoolkit.org terminated its map service, sorry!
+str(geo);
+head(geo);
+which(complete.cases(geo)==F);
+#combine the two data frames
+CityRate0 = dplyr::bind_cols(City0, geo);
+str(CityRate0);
+
+```
+
+
+
+## Map Locations 
+
+- We map the 50 cities using the `fiftystater` package.
+
+- [fiftystater](https://github.com/wmurphyrd/fiftystater) is a simple data package to ease the process of creating choropleths in 'ggplot2' with all fifty U.S. states and Washington D.C., including Alaska and Hawaii as insets.
+
+- For example, we just map these fifty cities.  But we have to change the long and lat information for the city in HI (Hawaii) manually.
+
+
+```{r echo=TRUE}
+CityRate$long = ifelse(CityRate$state=="HI", CityRate$long+53.60,CityRate$long);
+CityRate$lat = ifelse(CityRate$state=="HI", CityRate$lat+2.91,CityRate$lat);
+```
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(ggplot2);
+library(fiftystater);
+CityRate2013=filter(CityRate, year==2013);
+data("fifty_states");
+ggplot() + geom_polygon(data=fifty_states, aes(x=long, y=lat, group = group),color="white", fill="lightblue2")+
+geom_point(data = CityRate2013,aes(x=long, y=lat),col='red');
+``` 
+
+- We also can plot the cities with size proportional to their umemployment rates.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot() + geom_polygon(data=fifty_states, aes(x=long, y=lat, group = group),color="white", fill="lightblue2")+
+geom_point(data = CityRate2013,aes(x=long, y=lat,size=rate),col='red')+
+  scale_size(range=c(1,6), breaks=seq(2, 20, 3))+
+  ggtitle("Unemployment Rates for the 50 Largest Cities, Year 2013")+
+  theme(legend.position="top");
+``` 
+
+
+
+## Animated Map 
+
+- We first define a function of year.
+
+```{r echo=TRUE}
+PlotRate= function(x)
+{
+data_year=dplyr::filter(CityRate, year==x);
+#subset data in the year x
+ggplot() + 
+geom_polygon(data=fifty_states, aes(x=long, y=lat, group = group),color="white", fill="lightblue2")+
+geom_point(data = data_year,aes(x=long, y=lat,size=rate),col='red')+
+  scale_size(range=c(1,6), breaks=seq(2, 20, 3))+
+  ggtitle(paste("Unemployment Rates for the 50 Largest Cities, Year",x))+
+  theme(legend.position="bottom");
+}
+```
+
+
+- Animated map
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(magick);
+img=image_graph(width=600,height=400,res=96);
+for( i in 2013:2017) print(PlotRate(i));
+dev.off();
+RateAnimation = image_animate(img, fps = 1);
+print(RateAnimation);
+```
+
+

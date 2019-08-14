@@ -1,0 +1,183 @@
+---
+title: "Lab: Creating Animated Graphics"
+author: "Xuemao Zhang"
+date: "June 26, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* In this session, we use two examples to show how to make animated graphics using the package `magick`.
+
+* Install the following packages if you don't have them.
+
+```
+                install.packages('datasauRus');
+                install.packages('dplyr');
+                install.packages('ggplot2');
+                install.packages('magick');
+``` 
+
+
+## Datasaurus Data Visualization 
+
+
+### Datasaurus Data
+
+- The [Datasaurus dataset](https://www.autodeskresearch.com/publications/samestats) urges people to "never trust summary statistics alone; always visualize your data", since, while the data exhibits normal seeming statistics, plotting the data reveals a picture of a dinosaur.
+
+- The R package [datasauRus](https://cran.r-project.org/web/packages/datasauRus/vignettes/Datasaurus.html) contains 13 sets of x-y data. Each sub-dataset has five statistics that are (almost) the same in each case. (These are the mean of x, mean of y, standard deviation of x, standard deviation of y, and Pearson correlation between x and y). However, scatter plots reveal that each sub-dataset looks very different.
+
+- The datasets are intended to be used to teach students that it is important to plot their datasets, rather than relying only on statistics.
+
+
+```{r  echo=TRUE}
+library(datasauRus); library(dplyr); library(ggplot2);
+str(datasaurus_dozen);
+dinosaur=filter(datasaurus_dozen, dataset=="dino");
+attach(dinosaur);
+c(mean(x), sd(x));
+c(mean(y), sd(y));
+cor(x,y);
+detach(dinosaur);
+```
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(dinosaur, aes(x=x, y=y))+
+  geom_point(col="blue",size=2);
+``` 
+
+### Plot of 13 data sets
+
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+ggplot(datasaurus_dozen, aes(x=x, y=y, color=dataset))+
+    geom_point()+
+    theme_void()+
+    theme(legend.position = "none")+
+    facet_wrap(~dataset, ncol=3);
+```
+
+### Animated graphics
+
+
+- [Animated graphs](https://www.wjakethompson.com/post/datasaurus-dozen):
+
+```{r fig.align="center", out.width = '90%', echo=TRUE}
+library(magick);
+dataset=unique(datasaurus_dozen$dataset);
+Img = image_graph(600, 400, res = 72); #open a new graphics device
+for (i in 1:13)
+{
+  var=dataset[i];
+  data=filter(datasaurus_dozen, dataset==var);
+  p = ggplot(data, aes(x = x, y = y)) +
+       geom_point(col="blue")+
+    xlim(0,100)+ylim(0,100)+
+    labs( x=paste("X Mean:", round(mean(data$x),digits=2),  "Y Mean:", round(mean(data$y),digits=2),  "X Sd:",round(sd(data$x),digits=2),  "Y Sd:", round(sd(data$y),digits=2),  "cor(X,Y):", round(cor(data$x,data$y),digits=2),sep=" ") );
+  show(p);
+}
+dev.off();
+Img_Animation =image_animate(Img, fps = 5);
+print(Img_Animation);
+```
+
+
+
+## Data Visualization of Accidental Drug Related Deaths
+
+###  Accidental Drug Related Deaths Data
+
+- The second data set is  [Accidental Drug Related Deaths 2012-2017](https://catalog.data.gov/dataset/accidental-drug-related-deaths-january-2012-sept-2015) data from https://www.data.gov/.
+
+
+- The data can be read from the web directly:
+
+```{r  echo=TRUE}
+url="https://data.ct.gov/api/views/rybz-nyjw/rows.csv?accessType=DOWNLOAD";
+Drug = read.csv(url, stringsAsFactors = FALSE);
+```
+
+- If you already downloaded the data, import from your local disk.
+
+```{r  echo=TRUE}
+Drug= read.csv("F:/DataCamp/data/Accidental_Drug_Related_Deaths__2012-June_2018.csv",header=TRUE, sep=",");
+dim(Drug);
+str(Drug)
+```
+
+### Some data manipulations
+
+- Consider a sub data set with the first 5 variables included only.
+
+```{r  echo=TRUE}
+library(dplyr);
+Drug=dplyr::select(Drug, ID, Date,DateType,Age,Sex);
+str(Drug);
+which(complete.cases(Drug) == F); #check if there are missing values
+filter(Drug, complete.cases(Drug) == F); #only three observations have missing values; Remove them
+Drug=filter(Drug, complete.cases(Drug) == T);
+```
+
+- Add several variables: freq, month, year, quarter
+
+```{r  echo=TRUE}
+Drug$Date=as.Date(Drug$Date, "%m/%d/%Y");
+str(Drug);
+Drug=Drug%>%mutate(freq=1)%>%mutate(month=as.integer(format(Date,"%m")))%>%mutate(year=as.integer(format(Date,"%Y")));
+Drug=mutate(Drug, quarter=ifelse(month>=1 & month<=3,1, ifelse(month>=4 & month<=6, 2, ifelse(month>=7 & month<=9, 3, 4) ) )  );
+str(Drug);
+```
+
+- Consider the number of drug-related deaths by quarters. Define a `time` variable.
+
+
+```{r  echo=TRUE}
+unique(Drug$year);
+which(is.na(Drug$year) == T);
+Drug=filter(Drug, is.na(Drug$year) == F);
+dim(Drug);
+Drug=mutate(Drug, time=quarter+4*(year-2012))
+unique(Drug$time);   
+m= length(unique(Drug$time));  #28 quarters
+```
+
+### Animated Graphics
+
+- Aggregate the data by quarters -  `time` variable.
+
+```{r  echo=TRUE}
+Drug_quarters=aggregate(freq~ time, data = Drug, FUN= "sum");
+str(Drug_quarters);
+```
+
+- Data visualization
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(magick);
+img = image_graph(600, 400, res = 72); #open a new graphics device
+for (i in 1:m)
+{
+  data=filter(Drug_quarters, time<=i);
+  p = ggplot(data, aes(x = time, y = freq) ) +
+     geom_line(colour="black") +
+     geom_point(shape=21, col="black", aes(fill=freq),size=3)+
+    scale_fill_continuous(low = "green", high = "red", name = "Frequency")+
+     scale_x_continuous(limits=c(0,m)) +
+     scale_y_continuous(limits=c(0,300)) +
+     ggtitle("Accidental Drug Related Deaths 2012-2018 by Quarters");
+     show(p);
+}
+dev.off();
+img_animation =image_animate(img, fps = 2);
+print(img_animation);
+```

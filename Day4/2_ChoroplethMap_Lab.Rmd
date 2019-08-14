@@ -1,0 +1,199 @@
+---
+title: "Lab: Choropleth Map"
+author: "Xuemao Zhang"
+date: "June 27, 2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fontsize: 12pt
+---
+
+```{r setup, include=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+* In this session, we use one example to show how to plot a choropleth map using the information for coloring all regions.
+
+* We use the package `usmap` plot US map including Alaska and Hawaii. You may try to use the package `fiftystater`.
+
+* Install the following packages if you don't have them.
+
+```
+                install.packages("devtools");
+                devtools::install_github("wmurphyrd/fiftystater");
+                install.packages("usmap");
+                install.packages("dplyr");
+                install.packages('ggplot2');
+                install.packages('magick');
+                install.packages('stringr');
+``` 
+
+* Consider the state and county unemployment rates data in US from 1990 to 2017.  The data are available from [Bureau of Labor Statistics](https://www.bls.gov/lau/).
+
+
+## Unemployment Data
+
+### State Data
+
+- The state unemployment data (2013-2017) are in the form of HTML tables on https://www.bls.gov/lau/:
+
+      - https://www.bls.gov/lau/lastrk13.htm
+      - https://www.bls.gov/lau/lastrk14.htm
+      - https://www.bls.gov/lau/lastrk15.htm
+      - https://www.bls.gov/lau/lastrk16.htm
+      - https://www.bls.gov/lau/lastrk17.htm
+
+- The data were downloaded and combined in the file `StateUnemployment.csv`.
+
+```{r echo=TRUE}
+StateRate = read.csv("F:/DataCamp/data/StateUnemployment.csv",header=TRUE, sep=",");
+dim(StateRate);
+str(StateRate);
+```
+
+### County Data
+
+
+- The county data from 1990 to 2017 were downloaded and combined in the file `CountyUnemployment.csv`.
+
+```{r echo=TRUE}
+library(dplyr);
+CountyRate = read.csv("F:/DataCamp/data/CountyUnemployment.csv",header=TRUE, sep=",",stringsAsFactors = FALSE);
+dim(CountyRate);
+str(CountyRate);
+CountyRate$Rate=as.numeric(CountyRate$Rate);
+which(complete.cases(CountyRate)==F);  #some counties in some year have missing values
+```
+
+
+## Visualization of State Data
+
+### Plot the data by year
+
+- For example, we plot the unemployment rate data for the year 2017.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(usmap); 
+library(ggplot2);
+library(dplyr);
+StateRate=dplyr::rename(StateRate, state=State); #rename "State" to "state" to use the usmap package
+StateRate_2017=dplyr::filter(StateRate,Year==2017);
+plot_usmap(data = StateRate_2017, values = "Rate", lines = "red") +
+scale_fill_continuous(low = "green", high = "brown",
+name = "Unemployment Rate (2017)", label = scales::comma)+
+theme(legend.position = "top");
+```
+
+- Now,  we plot the unemployment rate data by Year. For this, we define a function of year.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+PlotRate= function(x)
+{
+data_year=dplyr::filter(StateRate, Year == x);
+plot_usmap(data = data_year, values = "Rate", lines = "red") +
+scale_fill_continuous(low = "green", high = "brown", name = "Rate", label = scales::comma)+
+ggtitle(paste("Distribution of US Unemployment Rate in Year",x))+
+theme(legend.position = "top");
+}
+```
+
+- Show all 5 maps.
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+for( i in 1:5)
+{
+print(PlotRate(i+2012));
+}
+```
+
+### Animated maps
+
+```{r fig.align="center", out.width = '100%', echo=TRUE}
+library(magick);
+img=image_graph(width=600,height=400,res=96);
+for( i in 1:5) print(PlotRate(i+2012));
+dev.off();
+StateAnimation = image_animate(img, fps = 1);
+print(StateAnimation);
+```
+
+
+## Visualization of County Data
+
+- Add a variable "state".  You may follow the last section to plot the state level data.
+
+```{r echo=TRUE}
+library(stringr);  library(dplyr);
+CountyRate=mutate(CountyRate, state=stringr::str_sub(County, -2, -1));  #extract the state name: the last two characters in "County"
+head(CountyRate);
+```
+
+- Add the variable 'fips' for county fips following the last lecture.
+
+```{r echo=TRUE}
+library(dplyr);
+CountyRate$StateFips=as.character(CountyRate$StateFips);
+CountyRate$CountyFips=as.character(CountyRate$CountyFips);
+CountyRate=mutate( CountyRate, fips=ifelse(nchar(CountyFips)==3,
+paste(StateFips, CountyFips, sep=""),
+ifelse(nchar(CountyFips)==2,
+paste(StateFips, CountyFips, sep="0"),
+paste(StateFips, CountyFips, sep="00")))  );
+head(CountyRate);
+``` 
+
+- We first divide the unemployment rate into **seven** categories: 
+    -  "<=2%"
+    -  ">2% and <=4%"
+    -  ">4% and <=6%"
+    -  ">6% and <=8%"
+    -  ">8% and <=10%"
+    -  ">10% and <=12%"
+    -  ">12%"
+
+```{r echo=TRUE}
+CountyRate= dplyr::mutate(CountyRate,
+rate = ifelse(Rate<=2.0, "2% or lower", 
+       ifelse(Rate>2 & Rate<=4, "2% to 4%",
+       ifelse(Rate>4 & Rate<=6, "4% to 6%",
+       ifelse(Rate>6 & Rate<=8, "6% to 8%",
+       ifelse(Rate>8 & Rate<=10, "8% to 10%",
+       ifelse(Rate>10 & Rate<=12, "10% to 12%", "12% or over"
+       ))))))
+    );
+CountyRate$rate=as.factor(CountyRate$rate);
+CountyRate$rate=factor(CountyRate$rate, levels = c("12% or over","10% to 12%","8% to 10%","6% to 8%","4% to 6%","2% to 4%", "2% or lower")); #order the factor levels
+which(complete.cases(CountyRate$rate)==F);
+```
+
+
+- Now we plot the county data by Year. For this, we define a function of year.
+
+
+```{r echo=TRUE}
+library(usmap);  library(ggplot2);
+PlotCountyRate= function(x)
+{
+County_year=dplyr::filter(CountyRate, Year==x);
+plot_usmap(regions="counties",data = County_year, values ="rate", lines=NA) +
+ggplot2::scale_fill_brewer(palette="Accent", name ="Unemployment Rate", na.value = "black")+
+ggtitle(paste("Distribution of US Unemployment Rate by County in Year",x))+
+theme(legend.position = "right");
+}
+```
+
+- Animated maps.
+
+```{r fig.align="center", out.width = '80%', echo=TRUE}
+library(magick);
+img=image_graph(width=600,height=400,res=96);
+for( i in 1:28) print(PlotCountyRate(i+1989));
+dev.off();
+CountyRateAnimation = image_animate(img, fps = 1);
+print(CountyRateAnimation);
+image_write(CountyRateAnimation, "CountyRateAnimation.gif")
+```
