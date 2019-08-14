@@ -1,7 +1,7 @@
 # DVSI_2019
 ESU Data Visualization Summer Institute (June 24 – 27, 2019), a four-day, intensive learning experience.
 
-It was organized by Department of Mathematics, East Stroudsburg University of Pennsylvania, the institute is designed to introduce students interested in data science the general techniques for data visualization using the programming language R. It is open to all university/college/high school faculty and students.
+It was organized by [Department of Mathematics, East Stroudsburg University of Pennsylvania](https://www.esu.edu/mathematics/index.cfm), the institute is designed to introduce students interested in data science the general techniques for data visualization using the programming language R. It is open to all university/college/high school faculty and students.
 
 **Schedule Overview:**
 
